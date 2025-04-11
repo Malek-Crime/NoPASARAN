@@ -35,12 +35,14 @@ class UpnpPrimitives:
             print("  External IP address:", external_ip)
             
             # Store results in state machine
-            state_machine.set_variable_value(outputs[0], upnp)
-            state_machine.set_variable_value(outputs[1], lan_ip)
-            state_machine.set_variable_value(outputs[2], external_ip)
-            state_machine.set_variable_value(outputs[2], num_devices)
+            state_machine.set_variable_value(outputs[0], num_devices)
+            state_machine.set_variable_value(outputs[1], upnp)
+            state_machine.set_variable_value(outputs[2], lan_ip)
+            state_machine.set_variable_value(outputs[3], external_ip)
+            
         else:
             print("No UPnP devices found.")
+            state_machine.set_variable_value(outputs[0], num_devices)
 
     @staticmethod
     @parsing_decorator(input_args=6, output_args=2)
