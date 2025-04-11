@@ -8,14 +8,14 @@ class UpnpPrimitives:
     """
 
     @staticmethod
-    @parsing_decorator(input_args=0, output_args=3)
+    @parsing_decorator(input_args=0, output_args=4)
     def discover(inputs, outputs, state_machine):
         """
         Discover UPnP devices on the network and return discovery results.
         
         Number of input arguments: 0
         
-        Number of output arguments: 3
+        Number of output arguments: 4
             - UPnP object
             - LAN IP address
             - External IP address
@@ -38,6 +38,7 @@ class UpnpPrimitives:
             state_machine.set_variable_value(outputs[0], upnp)
             state_machine.set_variable_value(outputs[1], lan_ip)
             state_machine.set_variable_value(outputs[2], external_ip)
+            state_machine.set_variable_value(outputs[2], num_devices)
         else:
             print("No UPnP devices found.")
 
