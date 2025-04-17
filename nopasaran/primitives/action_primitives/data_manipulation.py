@@ -324,3 +324,36 @@ class DataManipulationPrimitives:
             del dictionary[key]
         
         state_machine.set_variable_value(outputs[0], dictionary)
+        
+    @staticmethod
+    @parsing_decorator(input_args=2, output_args=1)
+    def get_element_from_dict(inputs, outputs, state_machine):
+        """
+        Retrieve an element from a dictionary stored in the machine's state using a specified key.
+
+        Number of input arguments: 2
+
+        Number of output arguments: 1
+
+        Optional input arguments: No
+
+        Optional output arguments: No
+
+        Args:
+            inputs (List[str]): The list of input variable names. It contains two mandatory input arguments:
+            - The name of the dictionary variable.
+            - The key to retrieve from the dictionary.
+        
+        outputs (List[str]): The list of output variable names. It contains one mandatory output argument,
+            which is the name of the variable to store the retrieved value.
+
+        state_machine: The state machine object.
+
+        Returns:
+        None
+        """
+        dictionary = state_machine.get_variable_value(inputs[0])
+        key = inputs[1]
+        value = dictionary.get(key)
+        state_machine.set_variable_value(outputs[0], value)
+        
