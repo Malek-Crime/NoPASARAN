@@ -354,7 +354,7 @@ class DataManipulationPrimitives:
         """
         dictionary = state_machine.get_variable_value(inputs[0])
         key = inputs[1]
-        value = dictionary.get(key)
+        value = dictionary.copy().get(key)
         state_machine.set_variable_value(outputs[0], value)
         print(value)
         
