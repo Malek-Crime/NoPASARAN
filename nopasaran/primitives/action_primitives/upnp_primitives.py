@@ -16,33 +16,45 @@ class UpnpPrimitives:
         Number of input arguments: 0
         
         Number of output arguments: 4
-            - UPnP object
-            - LAN IP address
-            - External IP address
+            - UPnP object (or None)
+            - LAN IP address (or None)
+            - External IP address (or None)
+            - Number of devices discovered
         """
         upnp = miniupnpc.UPnP()
-        upnp.discoverdelay = 200  # Discovery delay in milliseconds
+        upnp.discoverdelay = 200  # milliseconds
         
-        num_devices = upnp.discover()
-        print("Devices discovered:", num_devices)
-        
-        if num_devices > 0:
-            upnp.selectigd()
-            lan_ip = upnp.lanaddr
-            external_ip = upnp.externalipaddress()
-            print("Selected UPnP device:")
-            print("  LAN IP address:", lan_ip)
-            print("  External IP address:", external_ip)
-            
-            # Store results in state machine
-            state_machine.set_variable_value(outputs[0], num_devices)
-            state_machine.set_variable_value(outputs[1], upnp)
-            state_machine.set_variable_value(outputs[2], lan_ip)
-            state_machine.set_variable_value(outputs[3], external_ip)
-            
-        else:
-            print("No UPnP devices found.")
-            state_machine.set_variable_value(outputs[0], num_devices)
+        try:
+            num_devices = upnp.discover()
+            print("Devices discovered:", num_devices)
+
+            if num_devices > 0:
+                upnp.selectigd()
+                lan_ip = upnp.lanaddr
+                external_ip = upnp.externalipaddress()
+                print("Selected UPnP device:")
+                print("  LAN IP address:", lan_ip)
+                print("  External IP address:", external_ip)
+
+                state_machine.set_variable_value(outputs[0], upnp)
+                state_machine.set_variable_value(outputs[1], lan_ip)
+                state_machine.set_variable_value(outputs[2], external_ip)
+                state_machine.set_variable_value(outputs[3], num_devices)
+
+            else:
+                print("No UPnP devices found.")
+                state_machine.set_variable_value(outputs[0], None)
+                state_machine.set_variable_value(outputs[1], None)
+                state_machine.set_variable_value(outputs[2], None)
+                state_machine.set_variable_value(outputs[3], 0)
+
+        except Exception as e:
+            print("Error during UPnP discovery:", str(e))
+            state_machine.set_variable_value(outputs[0], None)
+            state_machine.set_variable_value(outputs[1], None)
+            state_machine.set_variable_value(outputs[2], None)
+            state_machine.set_variable_value(outputs[3], 0)
+
 
     @staticmethod
     @parsing_decorator(input_args=6, output_args=2)
