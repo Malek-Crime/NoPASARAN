@@ -356,4 +356,5 @@ class DataManipulationPrimitives:
         key = inputs[1]
         value = dictionary.get(key)
         state_machine.set_variable_value(outputs[0], value)
+        print(value)
         
