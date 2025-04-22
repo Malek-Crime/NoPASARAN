@@ -79,6 +79,33 @@ class UpnpPrimitives:
             print("No UPnP device found. Cannot add port mapping.")
             
     
+    
+    @staticmethod
+    @parsing_decorator(input_args=3, output_args=1)
+    def delete_port_mapping(inputs, outputs, state_machine):
+        """
+        Delete a port mapping using UPnP.
+
+        Number of input arguments: 3
+            - UPnP object
+            - External port to remove
+            - Protocol ('TCP' or 'UDP')
+
+        Number of output arguments: 1
+            - Success flag (True/False)
+        """
+        upnp = state_machine.get_variable_value(inputs[0])
+        external_port = int(state_machine.get_variable_value(inputs[1]))
+        protocol = state_machine.get_variable_value(inputs[2])
+        
+        if upnp:
+            result = upnp.deleteportmapping(external_port, protocol)
+            print(f"Delete port mapping result for {external_port}/{protocol}: {result}")
+            state_machine.set_variable_value(outputs[0], result)
+        else:
+            print("No UPnP device found. Cannot delete port mapping.")
+
+    
             
     @staticmethod
     @parsing_decorator(input_args=3, output_args=1)
