@@ -94,9 +94,9 @@ class UpnpPrimitives:
      Number of output arguments: 1
         - Success flag (True/False)
         """
-        upnp = state_machine.get_variable_value(inputs[0])
-        external_port = int(state_machine.get_variable_value(inputs[1]))
-        protocol = state_machine.get_variable_value(inputs[2])
+    upnp = state_machine.get_variable_value(inputs[0])
+    external_port = int(state_machine.get_variable_value(inputs[1]))
+    protocol = state_machine.get_variable_value(inputs[2])
     
     if upnp:
            result = upnp.deleteportmapping(external_port, protocol)
