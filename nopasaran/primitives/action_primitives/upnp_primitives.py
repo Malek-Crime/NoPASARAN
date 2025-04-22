@@ -78,33 +78,75 @@ class UpnpPrimitives:
         else:
             print("No UPnP device found. Cannot add port mapping.")
             
-
     
+            
     @staticmethod
     @parsing_decorator(input_args=3, output_args=1)
-    def delete_port_mapping(inputs, outputs, state_machine):
+    def add_multiple_port_mappings(inputs, outputs, state_machine):
         """
-        Delete a port mapping using UPnP.
+        Add multiple port mappings to the current host (like `upnpc -r`).
 
-        Number of input arguments: 3
+        Dynamic number of inputs:
             - UPnP object
-            - External port to remove
-         - Protocol ('TCP' or 'UDP')
+            - Internal IP
+            - For each mapping: internal_port, [external_port], protocol
 
-     Number of output arguments: 1
-        - Success flag (True/False)
+        Output:
+            - List of successfully added mappings (dicts)
         """
-    upnp = state_machine.get_variable_value(inputs[0])
-    external_port = int(state_machine.get_variable_value(inputs[1]))
-    protocol = state_machine.get_variable_value(inputs[2])
-    
-    if upnp:
-           result = upnp.deleteportmapping(external_port, protocol)
-           print(f"Delete port mapping result for {external_port}/{protocol}: {result}")
-           state_machine.set_variable_value(outputs[0], result)
-    else:
-        print("No UPnP device found. Cannot delete port mapping.")
-        
+        upnp = state_machine.get_variable_value(inputs[0])
+        internal_ip = state_machine.get_variable_value(inputs[1])
+        results = []
+
+        if upnp:
+            args = inputs[2:]
+            i = 0
+            while i < len(args):
+                internal_port = int(state_machine.get_variable_value(args[i]))
+                i += 1
+                if i < len(args) and isinstance(state_machine.get_variable_value(args[i]), int):
+                    external_port = int(state_machine.get_variable_value(args[i]))
+                    i += 1
+                else:
+                    external_port = internal_port  # default to same as internal
+
+                protocol = state_machine.get_variable_value(args[i])
+                i += 1
+
+                success = upnp.addportmapping(
+                    external_port,
+                    protocol,
+                    internal_ip,
+                    internal_port,
+                    'NoPASARAN bulk mapping',
+                    ''
+                )
+
+                results.append({
+                    'internal_port': internal_port,
+                    'external_port': external_port,
+                    'protocol': protocol,
+                    'success': success
+                })
+
+            print(f"Added {len(results)} mappings.")
+            state_machine.set_variable_value(outputs[0], results)
+        else:
+            print("No UPnP device found.")
+
+
+        if upnp:
+            for port in range(port_start, port_end + 1):
+                try:
+                    if upnp.deleteportmapping(port, protocol):
+                        deleted.append(port)
+                except Exception as e:
+                    print(f"Failed to delete port {port}/{protocol}: {e}")
+
+            print(f"Deleted ports: {deleted}")
+            state_machine.set_variable_value(outputs[0], deleted)
+        else:
+            print("No UPnP device found.")    
         
     @staticmethod
     @parsing_decorator(input_args=1, output_args=2)
@@ -217,14 +259,11 @@ class UpnpPrimitives:
     def delete_port_range(inputs, outputs, state_machine):
         """
         Delete a range of port mappings (IGD:2 only).
-
         Inputs:
             - UPnP object
             - Start port
             - End port
             - Protocol
-            (Optional: manage flag – ignored in miniupnpc, kept for API parity)
-
         Output:
             - List of ports successfully deleted
         """
@@ -232,62 +271,7 @@ class UpnpPrimitives:
         port_start = int(state_machine.get_variable_value(inputs[1]))
         port_end = int(state_machine.get_variable_value(inputs[2]))
         protocol = state_machine.get_variable_value(inputs[3])
-
-        deleted = []@staticmethod
-    @parsing_decorator(input_args="dynamic", output_args=1)
-    def add_multiple_port_mappings(inputs, outputs, state_machine):
-        """
-        Add multiple port mappings to the current host (like `upnpc -r`).
-
-        Dynamic number of inputs:
-            - UPnP object
-            - Internal IP
-            - For each mapping: internal_port, [external_port], protocol
-
-        Output:
-            - List of successfully added mappings (dicts)
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-        internal_ip = state_machine.get_variable_value(inputs[1])
-        results = []
-
-        if upnp:
-            args = inputs[2:]
-            i = 0
-            while i < len(args):
-                internal_port = int(state_machine.get_variable_value(args[i]))
-                i += 1
-                if i < len(args) and isinstance(state_machine.get_variable_value(args[i]), int):
-                    external_port = int(state_machine.get_variable_value(args[i]))
-                    i += 1
-                else:
-                    external_port = internal_port  # default to same as internal
-
-                protocol = state_machine.get_variable_value(args[i])
-                i += 1
-
-                success = upnp.addportmapping(
-                    external_port,
-                    protocol,
-                    internal_ip,
-                    internal_port,
-                    'NoPASARAN bulk mapping',
-                    ''
-                )
-
-                results.append({
-                    'internal_port': internal_port,
-                    'external_port': external_port,
-                    'protocol': protocol,
-                    'success': success
-                })
-
-            print(f"Added {len(results)} mappings.")
-            state_machine.set_variable_value(outputs[0], results)
-        else:
-            print("No UPnP device found.")
-
-
+        deleted = []
         if upnp:
             for port in range(port_start, port_end + 1):
                 try:
@@ -295,68 +279,10 @@ class UpnpPrimitives:
                         deleted.append(port)
                 except Exception as e:
                     print(f"Failed to delete port {port}/{protocol}: {e}")
-
             print(f"Deleted ports: {deleted}")
             state_machine.set_variable_value(outputs[0], deleted)
         else:
             print("No UPnP device found.")
-
-
-
-    @staticmethod
-    @parsing_decorator(input_args="dynamic", output_args=1)
-    def add_multiple_port_mappings(inputs, outputs, state_machine):
-        """
-        Add multiple port mappings to the current host (like `upnpc -r`).
-
-        Dynamic number of inputs:
-            - UPnP object
-            - Internal IP
-            - For each mapping: internal_port, [external_port], protocol
-
-        Output:
-            - List of successfully added mappings (dicts)
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-        internal_ip = state_machine.get_variable_value(inputs[1])
-        results = []
-
-        if upnp:
-            args = inputs[2:]
-            i = 0
-            while i < len(args):
-                internal_port = int(state_machine.get_variable_value(args[i]))
-                i += 1
-                if i < len(args) and isinstance(state_machine.get_variable_value(args[i]), int):
-                    external_port = int(state_machine.get_variable_value(args[i]))
-                    i += 1
-                else:
-                    external_port = internal_port  # default to same as internal
-
-                protocol = state_machine.get_variable_value(args[i])
-                i += 1
-
-                success = upnp.addportmapping(
-                    external_port,
-                    protocol,
-                    internal_ip,
-                    internal_port,
-                    'NoPASARAN bulk mapping',
-                    ''
-                )
-
-                results.append({
-                    'internal_port': internal_port,
-                    'external_port': external_port,
-                    'protocol': protocol,
-                    'success': success
-                })
-
-            print(f"Added {len(results)} mappings.")
-            state_machine.set_variable_value(outputs[0], results)
-        else:
-            print("No UPnP device found.")
-
 
 
     @staticmethod
