@@ -9,56 +9,55 @@ class UpnpPrimitives:
 
     @staticmethod
     @parsing_decorator(input_args=0, output_args=3)
-    def discover(inputs, outputs, state_machine):
+    def upnp_discover(inputs, outputs, state_machine):
         """
         Discover UPnP devices on the network and return discovery results.
-        
-        Number of input arguments: 0
-        
-        Number of output arguments: 3
-            - UPnP object
-            - LAN IP address
-            - External IP address
+
+        Outputs:
+            - UPnP object or None
+            - LAN IP address or None
+            - External IP address or None
         """
         upnp = miniupnpc.UPnP()
-        upnp.discoverdelay = 200  # Discovery delay in milliseconds
-        
-        num_devices = upnp.discover()
-        print("Devices discovered:", num_devices)
-        
-        if num_devices > 0:
-            upnp.selectigd()
-            lan_ip = upnp.lanaddr
-            external_ip = upnp.externalipaddress()
-            print("Selected UPnP device:")
-            print("  LAN IP address:", lan_ip)
-            print("  External IP address:", external_ip)
-            
-            # Store results in state machine
-            state_machine.set_variable_value(outputs[0], upnp)
-            state_machine.set_variable_value(outputs[1], lan_ip)
-            state_machine.set_variable_value(outputs[2], external_ip)
-            
-        else:
-            print("No UPnP devices found.")
-            
+        upnp.discoverdelay = 200
+
+        # Default to None
+        state_machine.set_variable_value(outputs[0], None)
+        state_machine.set_variable_value(outputs[1], None)
+        state_machine.set_variable_value(outputs[2], None)
+
+        try:
+            num_devices = upnp.discover()
+            print("Devices discovered:", num_devices)
+
+            if num_devices > 0:
+                upnp.selectigd()
+                lan_ip = upnp.lanaddr
+                external_ip = upnp.externalipaddress()
+
+                print("Selected UPnP device:")
+                print("  LAN IP address:", lan_ip)
+                print("  External IP address:", external_ip)
+
+                state_machine.set_variable_value(outputs[0], upnp)
+                state_machine.set_variable_value(outputs[1], lan_ip)
+                state_machine.set_variable_value(outputs[2], external_ip)
+            else:
+                print("No UPnP devices found.")
+
+        except Exception as e:
+            print("Error during UPnP discovery:", e)
 
 
     @staticmethod
     @parsing_decorator(input_args=6, output_args=2)
-    def add_port_mapping(inputs, outputs, state_machine):
+    def upnp_add_port_mapping(inputs, outputs, state_machine):
         """
-        Add a port mapping using UPnP, using discovered UPnP device info.
-        
-        Number of input arguments: 6
-            - UPnP object (from discover)
-            - LAN IP address (from discover)
-            - External IP address (from discover)
-            - External port to open.
-            - Internal port on the local machine.
-            - Protocol (e.g., 'TCP' or 'UDP').
-        
-        Number of output arguments: 2
+        Add a port mapping using UPnP.
+
+        Outputs:
+            - External IP or None
+            - External port or None
         """
         upnp = state_machine.get_variable_value(inputs[0])
         lan_addr = state_machine.get_variable_value(inputs[1])
@@ -66,50 +65,64 @@ class UpnpPrimitives:
         external_port = state_machine.get_variable_value(inputs[3])
         internal_port = state_machine.get_variable_value(inputs[4])
         protocol = state_machine.get_variable_value(inputs[5])
-        
+
+        # Default to None
+        state_machine.set_variable_value(outputs[0], None)
+        state_machine.set_variable_value(outputs[1], None)
+
         if upnp:
-            result = upnp.addportmapping(int(external_port), protocol, lan_addr, int(internal_port), 'Nopasaran mapping', '')
-            if result:
-                print(f"Port mapping added: external port {external_port} -> {lan_addr}:{internal_port} [{protocol}]")
-                state_machine.set_variable_value(outputs[0], external_ip)
-                state_machine.set_variable_value(outputs[1], external_port)
-            else:
-                print("Failed to add port mapping.")
+            try:
+                result = upnp.addportmapping(
+                    int(external_port),
+                    protocol,
+                    lan_addr,
+                    int(internal_port),
+                    'Nopasaran mapping',
+                    ''
+                )
+                if result:
+                    print(f"Port mapping added: {external_port} -> {lan_addr}:{internal_port} [{protocol}]")
+                    state_machine.set_variable_value(outputs[0], external_ip)
+                    state_machine.set_variable_value(outputs[1], external_port)
+                else:
+                    print("Failed to add port mapping.")
+            except Exception as e:
+                print("Error adding port mapping:", e)
         else:
-            print("No UPnP device found. Cannot add port mapping.")
-            
-    
-    
+            print("No UPnP device found.")
+
+
+
     @staticmethod
     @parsing_decorator(input_args=3, output_args=1)
-    def delete_port_mapping(inputs, outputs, state_machine):
+    def upnp_delete_port_mapping(inputs, outputs, state_machine):
         """
         Delete a port mapping using UPnP.
 
-        Number of input arguments: 3
-            - UPnP object
-            - External port to remove
-            - Protocol ('TCP' or 'UDP')
-
-        Number of output arguments: 1
-            - Success flag (True/False)
+        Output:
+            - Success flag (True/False) or None
         """
         upnp = state_machine.get_variable_value(inputs[0])
         external_port = int(state_machine.get_variable_value(inputs[1]))
         protocol = state_machine.get_variable_value(inputs[2])
-        
-        if upnp:
-            result = upnp.deleteportmapping(external_port, protocol)
-            print(f"Delete port mapping result for {external_port}/{protocol}: {result}")
-            state_machine.set_variable_value(outputs[0], result)
-        else:
-            print("No UPnP device found. Cannot delete port mapping.")
 
-    
-            
+        # Default to None
+        state_machine.set_variable_value(outputs[0], None)
+
+        if upnp:
+            try:
+                result = upnp.deleteportmapping(external_port, protocol)
+                print(f"Delete port mapping result for {external_port}/{protocol}: {result}")
+                state_machine.set_variable_value(outputs[0], result)
+            except Exception as e:
+                print(f"Error deleting port mapping: {e}")
+        else:
+            print("No UPnP device found.")
+
+
     @staticmethod
     @parsing_decorator(input_args=3, output_args=1)
-    def add_multiple_port_mappings(inputs, outputs, state_machine):
+    def upnp_add_multiple_port_mappings(inputs, outputs, state_machine):
         """
         Add multiple port mappings to the current host (like `upnpc -r`).
 
@@ -119,65 +132,56 @@ class UpnpPrimitives:
             - For each mapping: internal_port, [external_port], protocol
 
         Output:
-            - List of successfully added mappings (dicts)
+            - List of successfully added mappings (dicts), or None if failure
         """
+        outputs[0] = None  # Ensure output is always initialized
         upnp = state_machine.get_variable_value(inputs[0])
         internal_ip = state_machine.get_variable_value(inputs[1])
         results = []
 
         if upnp:
-            args = inputs[2:]
-            i = 0
-            while i < len(args):
-                internal_port = int(state_machine.get_variable_value(args[i]))
-                i += 1
-                if i < len(args) and isinstance(state_machine.get_variable_value(args[i]), int):
-                    external_port = int(state_machine.get_variable_value(args[i]))
+            try:
+                args = inputs[2:]
+                i = 0
+                while i < len(args):
+                    internal_port = int(state_machine.get_variable_value(args[i]))
                     i += 1
-                else:
-                    external_port = internal_port  # default to same as internal
+                    if i < len(args) and isinstance(state_machine.get_variable_value(args[i]), int):
+                        external_port = int(state_machine.get_variable_value(args[i]))
+                        i += 1
+                    else:
+                        external_port = internal_port  # default to same as internal
 
-                protocol = state_machine.get_variable_value(args[i])
-                i += 1
+                    protocol = state_machine.get_variable_value(args[i])
+                    i += 1
 
-                success = upnp.addportmapping(
-                    external_port,
-                    protocol,
-                    internal_ip,
-                    internal_port,
-                    'NoPASARAN bulk mapping',
-                    ''
-                )
+                    success = upnp.addportmapping(
+                        external_port,
+                        protocol,
+                        internal_ip,
+                        internal_port,
+                        'NoPASARAN bulk mapping',
+                        ''
+                    )
 
-                results.append({
-                    'internal_port': internal_port,
-                    'external_port': external_port,
-                    'protocol': protocol,
-                    'success': success
-                })
+                    results.append({
+                        'internal_port': internal_port,
+                        'external_port': external_port,
+                        'protocol': protocol,
+                        'success': success
+                    })
 
-            print(f"Added {len(results)} mappings.")
-            state_machine.set_variable_value(outputs[0], results)
+                print(f"Added {len(results)} mappings.")
+                state_machine.set_variable_value(outputs[0], results)
+            except Exception as e:
+                print("Error adding multiple port mappings:", e)
         else:
             print("No UPnP device found.")
 
 
-        if upnp:
-            for port in range(port_start, port_end + 1):
-                try:
-                    if upnp.deleteportmapping(port, protocol):
-                        deleted.append(port)
-                except Exception as e:
-                    print(f"Failed to delete port {port}/{protocol}: {e}")
-
-            print(f"Deleted ports: {deleted}")
-            state_machine.set_variable_value(outputs[0], deleted)
-        else:
-            print("No UPnP device found.")    
-        
     @staticmethod
     @parsing_decorator(input_args=1, output_args=2)
-    def get_status(inputs, outputs, state_machine):
+    def upnp_get_status(inputs, outputs, state_machine):
         """
         Get status of the current UPnP connection.
 
@@ -188,6 +192,9 @@ class UpnpPrimitives:
         - External IP address
         - Connection status (dict: {'status': int, 'uptime': int, 'last_connection_error': str})
         """
+        outputs[0] = None
+        outputs[1] = None
+
         upnp = state_machine.get_variable_value(inputs[0])
         if upnp:
             try:
@@ -204,11 +211,12 @@ class UpnpPrimitives:
                 print("Error getting UPnP status:", e)
         else:
             print("No UPnP device found.")
-    
-    
+
+
+
     @staticmethod
     @parsing_decorator(input_args=1, output_args=1)
-    def list_port_mappings(inputs, outputs, state_machine):
+    def upnp_list_port_mappings(inputs, outputs, state_machine):
         """
         List current port mappings (upnpc -l style).
 
@@ -218,6 +226,7 @@ class UpnpPrimitives:
         Output:
             - List of port mappings (tuples)
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         mappings = []
 
@@ -239,10 +248,9 @@ class UpnpPrimitives:
             print("No UPnP device found.")
 
 
-
     @staticmethod
     @parsing_decorator(input_args=6, output_args=1)
-    def add_any_port_mapping(inputs, outputs, state_machine):
+    def upnp_add_any_port_mapping(inputs, outputs, state_machine):
         """
         Add any port mapping (allow IGD to use an alternative external port).
         Equivalent to: upnpc -n
@@ -258,6 +266,7 @@ class UpnpPrimitives:
         Output:
             - Actual external port assigned
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         internal_ip = state_machine.get_variable_value(inputs[1])
         internal_port = int(state_machine.get_variable_value(inputs[2]))
@@ -266,24 +275,27 @@ class UpnpPrimitives:
         duration = int(state_machine.get_variable_value(inputs[5]))
 
         if upnp:
-            actual_port = upnp.addanyportmapping(
-                suggested_external_port,
-                protocol,
-                internal_ip,
-                internal_port,
-                'NoPASARAN any mapping',
-                '',
-                duration
-            )
-            print(f"Requested external port: {suggested_external_port}, Actual assigned: {actual_port}")
-            state_machine.set_variable_value(outputs[0], actual_port)
+            try:
+                actual_port = upnp.addanyportmapping(
+                    suggested_external_port,
+                    protocol,
+                    internal_ip,
+                    internal_port,
+                    'NoPASARAN any mapping',
+                    '',
+                    duration
+                )
+                print(f"Requested external port: {suggested_external_port}, Actual assigned: {actual_port}")
+                state_machine.set_variable_value(outputs[0], actual_port)
+            except Exception as e:
+                print(f"Failed to add any port mapping: {e}")
         else:
             print("No UPnP device found.")
 
 
     @staticmethod
     @parsing_decorator(input_args=4, output_args=1)
-    def delete_port_range(inputs, outputs, state_machine):
+    def upnp_delete_port_range(inputs, outputs, state_machine):
         """
         Delete a range of port mappings (IGD:2 only).
         Inputs:
@@ -294,11 +306,13 @@ class UpnpPrimitives:
         Output:
             - List of ports successfully deleted
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         port_start = int(state_machine.get_variable_value(inputs[1]))
         port_end = int(state_machine.get_variable_value(inputs[2]))
         protocol = state_machine.get_variable_value(inputs[3])
         deleted = []
+
         if upnp:
             for port in range(port_start, port_end + 1):
                 try:
@@ -312,9 +326,10 @@ class UpnpPrimitives:
             print("No UPnP device found.")
 
 
+
     @staticmethod
-    @parsing_decorator(input_args=6, output_args=1)
-    def add_pinhole(inputs, outputs, state_machine):
+    @parsing_decorator(input_args=7, output_args=1)
+    def upnp_add_pinhole(inputs, outputs, state_machine):
         """
         Add a pinhole rule (IGD:2 only).
 
@@ -330,6 +345,7 @@ class UpnpPrimitives:
         Output:
             - Unique ID of the pinhole
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         remote_ip = state_machine.get_variable_value(inputs[1])
         remote_port = int(state_machine.get_variable_value(inputs[2]))
@@ -348,9 +364,10 @@ class UpnpPrimitives:
         else:
             print("No UPnP device found.")
 
+
     @staticmethod
     @parsing_decorator(input_args=3, output_args=1)
-    def update_pinhole(inputs, outputs, state_machine):
+    def upnp_update_pinhole(inputs, outputs, state_machine):
         """
         Update the lease time of an existing pinhole.
 
@@ -362,6 +379,7 @@ class UpnpPrimitives:
         Output:
             - Success flag (True/False)
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         uid = state_machine.get_variable_value(inputs[1])
         new_lease_time = int(state_machine.get_variable_value(inputs[2]))
@@ -379,38 +397,10 @@ class UpnpPrimitives:
 
 
 
-    @staticmethod
-    @parsing_decorator(input_args=2, output_args=1)
-    def check_pinhole(inputs, outputs, state_machine):
-        """
-        Check if a pinhole is working (IGD:2 only).
-
-        Inputs:
-            - UPnP object
-            - Unique ID
-
-        Output:
-            - True if working, False otherwise
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-        uid = state_machine.get_variable_value(inputs[1])
-
-        if upnp:
-            try:
-                result = upnp.CheckPinholeWorking(uid)
-                print(f"Pinhole working: {bool(result)}")
-                state_machine.set_variable_value(outputs[0], bool(result))
-            except Exception as e:
-                print(f"Error checking pinhole: {e}")
-        else:
-            print("No UPnP device found.")
-
-
-
 
     @staticmethod
     @parsing_decorator(input_args=2, output_args=1)
-    def get_pinhole_packet_count(inputs, outputs, state_machine):
+    def upnp_get_pinhole_packet_count(inputs, outputs, state_machine):
         """
         Get number of packets that have passed through the pinhole (IGD:2 only).
 
@@ -421,6 +411,7 @@ class UpnpPrimitives:
         Output:
             - Packet count (integer)
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         uid = state_machine.get_variable_value(inputs[1])
 
@@ -434,11 +425,9 @@ class UpnpPrimitives:
         else:
             print("No UPnP device found.")
 
-
-
     @staticmethod
     @parsing_decorator(input_args=2, output_args=1)
-    def delete_pinhole(inputs, outputs, state_machine):
+    def upnp_delete_pinhole(inputs, outputs, state_machine):
         """
         Delete a pinhole rule by unique ID (IGD:2 only).
 
@@ -449,6 +438,7 @@ class UpnpPrimitives:
         Output:
             - True if deletion successful, False otherwise
         """
+        outputs[0] = None
         upnp = state_machine.get_variable_value(inputs[0])
         uid = state_machine.get_variable_value(inputs[1])
 
@@ -461,121 +451,3 @@ class UpnpPrimitives:
                 print(f"Failed to delete pinhole: {e}")
         else:
             print("No UPnP device found.")
-
-
-    @staticmethod
-    @parsing_decorator(input_args=1, output_args=1)
-    def list_port_mappings_igd2(inputs, outputs, state_machine):
-        """
-        List port mappings using GetListOfPortMappings (IGD:2 only).
-
-        Inputs:
-            - UPnP object
-
-        Output:
-            - List of tuples (external_port, protocol, internal_ip, internal_port)
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-        mappings = []
-
-        if upnp:
-            try:
-                index = 0
-                while True:
-                    entry = upnp.GetListOfPortMappings(index, 1)
-                    if not entry:
-                        break
-                    for mapping in entry:
-                        mappings.append(mapping)
-                    index += 1
-                print(f"Found {len(mappings)} port mappings.")
-                state_machine.set_variable_value(outputs[0], mappings)
-            except Exception as e:
-                print(f"Error listing port mappings via IGD:2: {e}")
-        else:
-            print("No UPnP device found.")
-
-
-    @staticmethod
-    @parsing_decorator(input_args=1, output_args=2)
-    def get_firewall_status(inputs, outputs, state_machine):
-        """
-        Get the firewall status (IGD:2 only).
-
-        Inputs:
-            - UPnP object
-
-        Outputs:
-            - Firewall enabled (bool)
-            - Inbound Pinhole allowed (bool)
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-
-        if upnp:
-            try:
-                firewall_enabled, inbound_pinhole = upnp.GetFirewallStatus()
-                print(f"Firewall enabled: {firewall_enabled}, Inbound pinhole allowed: {inbound_pinhole}")
-                state_machine.set_variable_value(outputs[0], bool(firewall_enabled))
-                state_machine.set_variable_value(outputs[1], bool(inbound_pinhole))
-            except Exception as e:
-                print(f"Failed to get firewall status: {e}")
-        else:
-            print("No UPnP device found.")
-    @staticmethod
-    @parsing_decorator(input_args=5, output_args=1)
-    def get_outbound_pinhole_timeout(inputs, outputs, state_machine):
-        """
-        Get the outbound pinhole timeout (IGD:2 only).
-
-        Inputs:
-            - UPnP object
-            - Remote IP
-            - Remote port
-            - Internal IP
-            - Internal port
-            - Protocol
-
-        Output:
-            - Timeout value in seconds
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-        remote_ip = state_machine.get_variable_value(inputs[1])
-        remote_port = int(state_machine.get_variable_value(inputs[2]))
-        internal_ip = state_machine.get_variable_value(inputs[3])
-        internal_port = int(state_machine.get_variable_value(inputs[4]))
-        protocol = state_machine.get_variable_value(inputs[5])
-
-        if upnp:
-            try:
-                timeout = upnp.GetOutboundPinholeTimeout(remote_ip, remote_port, internal_ip, internal_port, protocol)
-                print(f"Outbound pinhole timeout: {timeout} seconds")
-                state_machine.set_variable_value(outputs[0], timeout)
-            except Exception as e:
-                print(f"Failed to get outbound pinhole timeout: {e}")
-        else:
-            print("No UPnP device found.")
-
-
-    @staticmethod
-    @parsing_decorator(input_args=1, output_args=1)
-    def get_presentation_url(inputs, outputs, state_machine):
-        """
-        Get the presentation URL of the selected IGD.
-
-        Inputs:
-            - UPnP object
-
-        Output:
-            - Presentation URL (string)
-        """
-        upnp = state_machine.get_variable_value(inputs[0])
-
-        if upnp:
-            try:
-                url = upnp.urlbase
-                print(f"Presentation URL: {url}")
-                state_machine.set_variable_value(outputs[0], url)
-            except Exception as e:
-                print(f"Failed to get presentation URL: {e}")
-        else:
-            print("No UPnP device found.")    
