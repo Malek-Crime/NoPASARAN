@@ -356,7 +356,7 @@ class UpnpPrimitives:
 
         if upnp:
             try:
-                uid = upnp.AddPinhole(remote_ip, remote_port, internal_ip, internal_port, protocol, lease_time)
+                uid = upnp.addpinhole(remote_ip, remote_port, internal_ip, internal_port, protocol, lease_time)
                 print(f"Pinhole created. Unique ID: {uid}")
                 state_machine.set_variable_value(outputs[0], uid)
             except Exception as e:
